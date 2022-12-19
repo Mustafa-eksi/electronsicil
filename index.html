@@ -6,57 +6,81 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="bootstrap.min.css">
-    <title>MERHABA</title>
+    <title>Rol değiştirme programı</title>
 </head>
 <body>
-    <div class="input-group mb-3">
-        <input type="text" id="value" class="form-control">
+    <div class="input-group px-5 pt-4 pb-2 mb-1">
+      <div class="input-group-prepend">
+        <span class="input-group-text" id="inputGroup-sizing-default">İsim-soyisim:</span>
+      </div>
+      <input type="text" class="form-control" id="value" aria-label="Default" list="users" aria-describedby="inputGroup-sizing-default" placeholder="İsim-Soyisim">
+      <datalist id="users"></datalist>
     </div>
-    <table class="table">
-        <thead>
-          <tr>
-            <th scope="col">#</th>
-            <th scope="col">İsim-Soyisim</th>
-            <th scope="col">Sicilno</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <th scope="row">1</th>
-            <td>Mark</td>
-            <td>Otto</td>
-            <td>@mdo</td>
-          </tr>
-          <tr>
-            <th scope="row">2</th>
-            <td>Jacob</td>
-            <td>Thornton</td>
-            <td>@fat</td>
-          </tr>
-          <tr>
-            <th scope="row">3</th>
-            <td colspan="2">Larry the Bird</td>
-            <td>@twitter</td>
-          </tr>
-        </tbody>
-      </table>
-    <button class="btn btn-primary" id="buton1">Bas</button>
+    <div class="input-group px-5 pt-2 mb-3">
+      <div class="input-group-prepend">
+        <span class="input-group-text" id="inputGroup-sizing-default">Sicilno:</span>
+      </div>
+      <input type="text" id="sicil" class="form-control" aria-label="Default" aria-describedby="inputGroup-sizing-default">
+    </div>
+    <div class="input-group px-5">
+      <div class="input-group-prepend">
+        <span class="input-group-text" id="inputGroup-sizing-default">Yeni rol:</span>
+      </div>
+      <select class="custom-select" id="select">
+        <option selected>Değiştirilecek rolü seçiniz.</option>
+        <option value="Yazılımcı">Yazılımcı</option>
+        <option value="Yardımcı">Yardımcı</option>
+        <option value="Boş işler müdürü">Boş işler müdürü</option>
+      </select>
+    </div>
+    <button type="button" class="btn btn-primary mx-5 mt-3" id="buton">Güncelle</button>
     <script>
         const electron = require("electron");
         const {ipcRenderer} = electron;
-        let buton1 = document.querySelector("#buton1");
+        let secilikisi = -1, kisiler = [];
+        let buton1 = document.querySelector("#buton");
         let textin = document.querySelector("#value");
-        buton1.addEventListener('click', ()=> {
-            ipcRenderer.send("key:sendvalue", textin.value);
-        })
-        function a(err, data) {
-            console.log(data);
+        let list = document.querySelector("#users");
+        let select = document.querySelector("#select");
+        let sicil = document.querySelector("#sicil");
+        function UpdateInfos() {
+          if(kisiler.length === 0) {
+            ipcRenderer.invoke('get-users').then((v) => {
+              kisiler = v;
+            })
+          }
+          for(let im = 0; im < kisiler.length; im++) {
+            if(kisiler[im].isim_soyisim === textin.value) {
+              secilikisi = im;
+            }
+          }
+          if(secilikisi != -1) {
+            sicil.value = kisiler[secilikisi].sicilno;
+            select.value = kisiler[secilikisi].rol;
+          }
         }
-        
-        ipcRenderer.invoke('search', "AL").then((v)=>{
-          console.log(v);
-        }).catch(err=>console.log)
-        ipcRenderer.on('key:sendoutput', a)
+        buton1.addEventListener('click', ()=> {
+          if(kisiler[secilikisi].rol === select.value) {
+            alert("Bu kişinin rolü zaten bu.");
+            return;
+          }
+          ipcRenderer.invoke('updaterole', {sicilno:kisiler[secilikisi].sicilno, yenirol:select.value}).then((v)=>{
+            kisiler[secilikisi].sicilno = v;
+            kisiler[secilikisi].rol = select.value;
+            UpdateInfos();
+          }).catch((err)=>console.error(err.message));
+        })
+        ipcRenderer.on('key:allusers', (err, data) => {
+          kisiler = data;
+          for(let i = 0; i < data.length; i++) {
+            let option = document.createElement('option');
+            option.value = data[i].isim_soyisim;
+            list.appendChild(option);
+          }
+        })
+        textin.addEventListener('change', () => {
+          UpdateInfos();
+        })
     </script>
 </body>
 </html>

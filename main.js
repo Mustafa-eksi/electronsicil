@@ -23,29 +23,33 @@ app.on('ready', () => {
             slashes:true
     }));
     /* Gerekli özellikler ve buna uygun yazılım tasarımı:
-        1. Kişilerin isim-soyisim'li listesi
-        2. Belli bir metine göre arayarak isim-soyisim listesi handle->search
+        1. Kişilerin isim-soyisim'li listesi key:allusers
+        2. Kişi listesinin frontend tarafından istenmesi get-users
         NOT: 1 ve 2'de isim soyisim yanında sicilno ve rol gönderildiğinden bir daha gönderilmesine gerek yoktur.
-        4. Sicilno'su bilinen kişinin rolünü değiştirme key:updaterole
+        3. Sicilno'su bilinen kişinin rolünü değiştirme key:updaterole
     */
-    // Uygulama ilk başlatıldığında tüm kullanıcıları göndersin.
+   let kisiler; // Güncellerken en sonki toplam sayıyı bulmak için
+    // 1 - Uygulama ilk başlatıldığında tüm kullanıcıları göndersin.
     db.all("select isim_soyisim, rol, sicilno from users", [], (err, rows)=>{
-        mainWindow.webContents.send('key:sendoutput', rows);
+        if(err) return console.error(err.message);
+        kisiler = rows;
+        mainWindow.webContents.send('key:allusers', rows);
     })
-    // Belirli bir metinle sorgulanan isim-soyisimler
-    ipcMain.handle('search', async (event, data)=>{ // data -> sorguda kullanılacak metin
-        if(data === null || data == "") return new Error("Given data is null.");
-        return new Promise((reslove, reject) => { // Promise kullanılmasının nedeni db.all'ın eşzamansız olmasıdır. Böylece frontend'de .then kullanarak verinin gelmesini bekleyebiliyoruz.
-            db.all("select isim_soyisim, rol, sicilno from users where isim_soyisim like '"+data+"%'", [], (err, rows)=>{
+    // 2 - Kullanıcıları getirme
+    ipcMain.handle('get-users', async (e) => {
+        return new Promise((reslove, reject)=> {
+            db.all("select isim_soyisim, rol, sicilno from users", [], (err, rows)=>{
                 if(err) reject(err);
-                if(rows == null) reject(new Error("Can't find"));
+                kisiler = rows;
                 reslove(rows)
             })
-        });
+        })
     })
-    // Rol değiştirme
-    ipcMain.on('key:updaterole', (err, data) => { // data = {sicilno:"değiştirilmek istenilenin sicilnosu", yenirol:"kişinin yeni rolü"}
+    // 3 - Rol değiştirme
+    // Bunu handle'la yapmamın amacı işlem bittiğinde (frontend'de güncelleyebilmek için) yeni sicilnoyu göndermektir.
+    ipcMain.handle('updaterole', async (e, data)=> { // data = {sicilno:"değiştirilmek istenilenin sicilnosu", yenirol:"kişinin yeni rolü"}
         if(data.sicilno == undefined || data.yenirol == undefined) return console.error("Sicilno or yenirol is undefined!");
+        const d = new Date();
         let yil = d.getFullYear().toString();
         let rol;
         switch(data.yenirol) {
@@ -54,13 +58,44 @@ app.on('ready', () => {
             case "Boş işler müdürü":{rol = 'Bo'; break;}
             default: rol = 'Belirsiz';
         }
-        db.all("SELECT count(*) FROM users where rol='"+data.yenirol+"'", [], (err, rows1)=> {
-            let rolsayi = rows1[0]['count(*)']+1;
-            db.all("SELECT count(*) FROM users", [], (err, rows2)=>{
-                let mevcutsayi= rows2[0]['count(*)']+1
-                let yeni_sicilno = yil.charAt(3) + rol + rolsayi + 'T' + mevcutsayi;
-                db.run("update users set rol='"+data.yenirol+"', sicilno='"+yeni_sicilno+"', sicilno_rev='"+data.sicilno+"', rev_ts="+Date.now()+" where sicilno="+data.sicilno, [], (err) => console.error(err.message));
+        return new Promise((resolve, reject)=> {
+            db.all("SELECT sicilno FROM users where rol='"+data.yenirol+"'", [], (err, rows1)=> {
+                let rolsayi = 0;
+                rows1.forEach((e)=>{
+                    let erol = e["sicilno"].split(rol)[1].split('T')[0];
+                    if(parseInt(erol) >= rolsayi) {
+                        rolsayi = parseInt(erol)+1;
+                    }
+                });
+                let yeni_sicilno = yil.charAt(3) + rol + rolsayi + 'T' + data.sicilno.split('T')[1];
+                //console.log("update users set rol='"+data.yenirol+"', sicilno='"+yeni_sicilno+"', sicilno_rev='"+data.sicilno+"', rev_ts="+Date.now()+" where sicilno="+data.sicilno);
+                db.run("update users set rol='"+data.yenirol+"', sicilno='"+yeni_sicilno+"', sicilno_rev='"+data.sicilno+"', rev_ts="+Date.now()+" where sicilno='"+data.sicilno+"'", [], (err) => {if(err) reject(err.message)});
+                resolve(yeni_sicilno);
             })
-        })
+        });
     });
+    /*ipcMain.on('key:updaterole', (err, data) => { // data = {sicilno:"değiştirilmek istenilenin sicilnosu", yenirol:"kişinin yeni rolü"}
+        if(data.sicilno == undefined || data.yenirol == undefined) return console.error("Sicilno or yenirol is undefined!");
+        const d = new Date();
+        let yil = d.getFullYear().toString();
+        let rol;
+        switch(data.yenirol) {
+            case "Yazılımcı":{ rol = 'Yz'; break;}
+            case "Yardımcı":{ rol = 'Yr'; break;}
+            case "Boş işler müdürü":{rol = 'Bo'; break;}
+            default: rol = 'Belirsiz';
+        }
+        db.all("SELECT sicilno FROM users where rol='"+data.yenirol+"'", [], (err, rows1)=> {
+            let rolsayi = 0;
+            rows1.forEach((e)=>{
+                let erol = e["sicilno"].split(rol)[1].split('T')[0];
+                if(parseInt(erol) >= rolsayi) {
+                    rolsayi = parseInt(erol)+1;
+                }
+            });
+            let yeni_sicilno = yil.charAt(3) + rol + rolsayi + 'T' + data.sicilno.split('T')[1];
+            //console.log("update users set rol='"+data.yenirol+"', sicilno='"+yeni_sicilno+"', sicilno_rev='"+data.sicilno+"', rev_ts="+Date.now()+" where sicilno="+data.sicilno);
+            db.run("update users set rol='"+data.yenirol+"', sicilno='"+yeni_sicilno+"', sicilno_rev='"+data.sicilno+"', rev_ts="+Date.now()+" where sicilno='"+data.sicilno+"'", [], (err) => {if(err) return console.error(err.message)});
+        })
+    });*/
 })
