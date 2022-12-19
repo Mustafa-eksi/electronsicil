@@ -52,6 +52,10 @@
         function a(err, data) {
             console.log(data);
         }
+        
+        ipcRenderer.invoke('search', "AL").then((v)=>{
+          console.log(v);
+        }).catch(err=>console.log)
         ipcRenderer.on('key:sendoutput', a)
     </script>
 </body>
