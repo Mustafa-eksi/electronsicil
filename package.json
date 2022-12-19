@@ -1,0 +1,18 @@
+{
+  "name": "electronsicil",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "author": "mustafa",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^22.0.0"
+  },
+  "dependencies": {
+    "bootstrap": "^5.2.3",
+    "sqlite": "^4.1.2"
+  }
+}
