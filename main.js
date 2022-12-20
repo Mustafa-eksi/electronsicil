@@ -30,7 +30,7 @@ app.on('ready', () => {
     */
    let kisiler; // Güncellerken en sonki toplam sayıyı bulmak için
     // 1 - Uygulama ilk başlatıldığında tüm kullanıcıları göndersin.
-    db.all("select isim_soyisim, rol, sicilno from users", [], (err, rows)=>{
+    db.all("select tcno, isim_soyisim, rol, sicilno from users", [], (err, rows)=>{
         if(err) return console.error(err.message);
         kisiler = rows;
         mainWindow.webContents.send('key:allusers', rows);
@@ -38,7 +38,7 @@ app.on('ready', () => {
     // 2 - Kullanıcıları getirme
     ipcMain.handle('get-users', async (e) => {
         return new Promise((reslove, reject)=> {
-            db.all("select isim_soyisim, rol, sicilno from users", [], (err, rows)=>{
+            db.all("select tcno, isim_soyisim, rol, sicilno from users", [], (err, rows)=>{
                 if(err) reject(err);
                 kisiler = rows;
                 reslove(rows)

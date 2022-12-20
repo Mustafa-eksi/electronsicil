@@ -11,12 +11,18 @@
 <body>
     <div class="input-group px-5 pt-4 pb-2 mb-1">
       <div class="input-group-prepend">
-        <span class="input-group-text" id="inputGroup-sizing-default">İsim-soyisim:</span>
+        <span class="input-group-text" id="inputGroup-sizing-default">T.C. Kimlik no:</span>
       </div>
-      <input type="text" class="form-control" id="value" aria-label="Default" list="users" aria-describedby="inputGroup-sizing-default" placeholder="İsim-Soyisim">
+      <input type="text" class="form-control" id="tc" aria-label="Default" list="users" aria-describedby="inputGroup-sizing-default" placeholder="T.C. Kimlik noyu giriniz">
       <datalist id="users"></datalist>
     </div>
     <div class="input-group px-5 pt-2 mb-3">
+      <div class="input-group-prepend">
+        <span class="input-group-text" id="inputGroup-sizing-default">İsim-soyisim:</span>
+      </div>
+      <input type="text" class="form-control" id="isim" aria-label="Default" aria-describedby="inputGroup-sizing-default">
+    </div>
+    <div class="input-group px-5 mb-3">
       <div class="input-group-prepend">
         <span class="input-group-text" id="inputGroup-sizing-default">Sicilno:</span>
       </div>
@@ -34,15 +40,18 @@
       </select>
     </div>
     <button type="button" class="btn btn-primary mx-5 mt-3" id="buton">Güncelle</button>
+    <button type="button" class="btn btn-secondary mx-5 mt-3" style="position: absolute; right: 0rem;" id="nasil">Nasıl Çalışır?</button>
     <script>
         const electron = require("electron");
         const {ipcRenderer} = electron;
         let secilikisi = -1, kisiler = [];
         let buton1 = document.querySelector("#buton");
-        let textin = document.querySelector("#value");
+        let isim = document.querySelector("#isim");
+        let textin = document.querySelector("#tc");
         let list = document.querySelector("#users");
         let select = document.querySelector("#select");
         let sicil = document.querySelector("#sicil");
+        let nasil = document.querySelector("#nasil");
         function UpdateInfos() {
           if(kisiler.length === 0) {
             ipcRenderer.invoke('get-users').then((v) => {
@@ -50,11 +59,12 @@
             })
           }
           for(let im = 0; im < kisiler.length; im++) {
-            if(kisiler[im].isim_soyisim === textin.value) {
+            if(kisiler[im].tcno === textin.value) {
               secilikisi = im;
             }
           }
           if(secilikisi != -1) {
+            isim.value = kisiler[secilikisi].isim_soyisim;
             sicil.value = kisiler[secilikisi].sicilno;
             select.value = kisiler[secilikisi].rol;
           }
@@ -74,12 +84,17 @@
           kisiler = data;
           for(let i = 0; i < data.length; i++) {
             let option = document.createElement('option');
-            option.value = data[i].isim_soyisim;
+            option.value = data[i].tcno;
             list.appendChild(option);
           }
         })
         textin.addEventListener('change', () => {
+          console.log(kisiler)
+          console.log("Merhab");
           UpdateInfos();
+        })
+        nasil.addEventListener('click', () => {
+          alert("T.C. Kimlik no bölümüne rolünü değiştirmek istediğiniz kişinin tcsini girin, sonra boş bir yere tıklayın.\nRolünü değiştirmek istediğiniz kişinin bilgileri gelecektir (kişinin mevcut rolü 'yeni rol' kısmında gösterilir, yeni bir rol vermek isterseniz bunu değiştirebilirsiniz.)")
         })
     </script>
 </body>
